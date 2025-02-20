@@ -1,0 +1,334 @@
+basePath: /
+definitions:
+  controller.BindStudentRequest:
+    properties:
+      examid:
+        example: EXAM001
+        type: string
+      stuid:
+        example: "2021001"
+        type: string
+    type: object
+  controller.BindStudentResponse:
+    properties:
+      examid:
+        example: EXAM001
+        type: string
+      message:
+        example: 绑定成功
+        type: string
+      password:
+        example: a1b2c3d4
+        type: string
+      stuid:
+        example: "2021001"
+        type: string
+    type: object
+  controller.CreateExamRequest:
+    properties:
+      examid:
+        example: EXAM002
+        type: string
+    type: object
+  controller.CreateExamResponse:
+    properties:
+      examid:
+        example: EXAM002
+        type: string
+      message:
+        example: 考试创建成功
+        type: string
+    type: object
+  controller.ErrorResponse:
+    properties:
+      error:
+        example: 请求参数错误
+        type: string
+    type: object
+  controller.GetAdminBackupResponse:
+    properties:
+      adminid:
+        example: admin001
+        type: string
+      created_at:
+        type: string
+      examid:
+        example: EXAM001
+        type: string
+      password:
+        example: admin123456
+        type: string
+    type: object
+  controller.GetAdminPasswordResponse:
+    properties:
+      adminid:
+        example: admin001
+        type: string
+      examid:
+        example: EXAM001
+        type: string
+      password:
+        example: a1b2c3d4
+        type: string
+    type: object
+  controller.GetPasswordResponse:
+    properties:
+      password:
+        example: a1b2c3d4
+        type: string
+    type: object
+  controller.SuccessResponse:
+    properties:
+      message:
+        example: 操作成功
+        type: string
+    type: object
+  controller.UpdateAdminRequest:
+    properties:
+      new_adminid:
+        example: customAdmin
+        type: string
+      new_examid:
+        example: CUSTOM001
+        type: string
+      new_password:
+        example: customPassword
+        type: string
+      old_adminid:
+        example: admin
+        type: string
+      old_examid:
+        example: EXAM001
+        type: string
+      old_password:
+        example: admin123
+        type: string
+    type: object
+  controller.ValidateExamEntryRequest:
+    properties:
+      examid:
+        example: EXAM001
+        type: string
+      password:
+        example: a1b2c3d4
+        type: string
+      stuid:
+        example: "2021001"
+        type: string
+    type: object
+  controller.ValidateExamEntryResponse:
+    properties:
+      examid:
+        example: EXAM001
+        type: string
+      is_default:
+        example: false
+        type: boolean
+      message:
+        example: 验证成功
+        type: string
+      role:
+        example: student
+        type: string
+      userid:
+        example: "2021001"
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: 提供考试密码生成、分发和验证功能的API系统
+  title: 考试密码分发系统API
+  version: "1.0"
+paths:
+  /admin/backup:
+    get:
+      description: 获取系统初始化时创建的顶级管理员信息
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.GetAdminBackupResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+      summary: 获取顶级管理员信息
+  /admin/deleteAll:
+    delete:
+      consumes:
+      - application/json
+      description: 测试接口：删除所有管理员数据
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.SuccessResponse'
+      summary: 删除所有管理员
+  /admin/password:
+    get:
+      consumes:
+      - application/json
+      description: 获取指定考试的管理员密码
+      parameters:
+      - description: 考试ID
+        in: query
+        name: examid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.GetAdminPasswordResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+      summary: 获取管理员密码
+  /admin/update:
+    post:
+      consumes:
+      - application/json
+      description: 更新默认管理员的ID、密码和考试ID
+      parameters:
+      - description: 更新信息
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controller.UpdateAdminRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+      summary: 更新管理员信息
+  /exam/bind:
+    post:
+      consumes:
+      - application/json
+      description: 学生到达考场后绑定考试并获取密码
+      parameters:
+      - description: 绑定信息
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controller.BindStudentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.BindStudentResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+      summary: 学生绑定考试
+  /exam/create:
+    post:
+      consumes:
+      - application/json
+      description: 管理员创建新的考试
+      parameters:
+      - description: 考试信息
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controller.CreateExamRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.CreateExamResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+      summary: 创建新考试
+  /password:
+    get:
+      consumes:
+      - application/json
+      description: 客户端接口：获取一个未分发的考试密码
+      parameters:
+      - description: 学生ID
+        in: query
+        name: stuid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.GetPasswordResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+      summary: 获取考试密码
+  /validateExamPassword:
+    post:
+      consumes:
+      - application/json
+      description: 验证考试密码是否有效并返回用于后续请求的token
+      parameters:
+      - description: 登录验证信息
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controller.ValidateExamEntryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.ValidateExamEntryResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+      summary: 考试系统登录
+swagger: "2.0"
