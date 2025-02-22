@@ -13,15 +13,19 @@ class _LoginPageState extends State<LoginPage> {
   final _userIdController = TextEditingController();
   final _passwordController = TextEditingController();
 
+  String? token;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(title: const Text('登入考试')),
       body: Center(
         child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
             child: Card(
-              elevation: 4,
+              elevation: 2,
+              margin: const EdgeInsets.all(24.0),
               child: Padding(
                 padding: const EdgeInsets.all(32.0),
                 child: Form(
@@ -30,8 +34,8 @@ class _LoginPageState extends State<LoginPage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        '欢迎登录',
-                        style: Theme.of(context).textTheme.headlineMedium,
+                        '登入考试',
+                        style: Theme.of(context).textTheme.headlineSmall,
                       ),
                       const SizedBox(height: 32),
                       TextFormField(
@@ -41,12 +45,9 @@ class _LoginPageState extends State<LoginPage> {
                           prefixIcon: Icon(Icons.numbers),
                           border: OutlineInputBorder(),
                         ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return '请输入考试场次ID';
-                          }
-                          return null;
-                        },
+                        validator: (value) => (value == null || value.isEmpty)
+                            ? '请输入考试场次ID'
+                            : null,
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
@@ -56,12 +57,9 @@ class _LoginPageState extends State<LoginPage> {
                           prefixIcon: Icon(Icons.person),
                           border: OutlineInputBorder(),
                         ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return '请输入学号/工号';
-                          }
-                          return null;
-                        },
+                        validator: (value) => (value == null || value.isEmpty)
+                            ? '请输入学号/工号'
+                            : null,
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
@@ -72,24 +70,39 @@ class _LoginPageState extends State<LoginPage> {
                           border: OutlineInputBorder(),
                         ),
                         obscureText: true,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return '请输入密码';
-                          }
-                          return null;
-                        },
+                        validator: (value) =>
+                            (value == null || value.isEmpty) ? '请输入密码' : null,
                       ),
                       const SizedBox(height: 32),
                       SizedBox(
                         width: double.infinity,
-                        height: 48,
+                        height: 50,
                         child: ElevatedButton(
                           onPressed: () {
                             if (_formKey.currentState!.validate()) {
-                              // TODO: 实现登录逻辑
+                              // 模拟接口返回并保存 token
+                              String userId = _userIdController.text;
+                              Map<String, dynamic> response = {
+                                "message": "验证成功",
+                                "role": userId.startsWith("admin")
+                                    ? "admin"
+                                    : "student",
+                                "is_default": userId.startsWith("admin"),
+                                "examid": _examIdController.text,
+                                "userid": userId,
+                                "token": "sample_token_123"
+                              };
+                              token = response["token"];
+                              if (response["role"] == "student") {
+                                Navigator.pushReplacementNamed(
+                                    context, '/examMain');
+                              } else {
+                                Navigator.pushReplacementNamed(
+                                    context, '/monitor');
+                              }
                             }
                           },
-                          child: const Text('登录'),
+                          child: const Text('登入'),
                         ),
                       ),
                     ],

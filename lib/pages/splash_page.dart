@@ -11,9 +11,9 @@ class _SplashPageState extends State<SplashPage> {
   @override
   void initState() {
     super.initState();
-    // 2秒后自动跳转到登录页
+    // 2秒后自动跳转到选择页面
     Future.delayed(const Duration(seconds: 2), () {
-      Navigator.pushReplacementNamed(context, '/login');
+      Navigator.pushReplacementNamed(context, '/selector');
     });
   }
 

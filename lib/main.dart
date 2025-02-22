@@ -3,6 +3,8 @@ import 'package:window_size/window_size.dart' as window_size;
 import 'package:flutter/foundation.dart';
 import 'dart:io';
 import 'pages/splash_page.dart';
+import 'pages/selector_page.dart';
+import 'pages/binding_page.dart';
 import 'pages/login_page.dart';
 
 void main() {
@@ -12,7 +14,8 @@ void main() {
   if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
     window_size.setWindowTitle('OJ在线考试平台');
     window_size.setWindowMinSize(const Size(800, 600));
-    window_size.setWindowMaxSize(const Size(1600, 1200));
+    // 设置初始窗口大小（可选）
+    window_size.setWindowFrame(const Rect.fromLTWH(0, 0, 1024, 768));
   }
 
   runApp(const MyApp());
@@ -31,7 +34,14 @@ class MyApp extends StatelessWidget {
       ),
       home: const SplashPage(),
       routes: {
-        '/login': (context) => const LoginPage(),
+        '/selector': (context) => const SelectorPage(),
+        '/binding': (context) => const BindingPage(),
+        '/examLogin': (context) => const LoginPage(),
+        // 以下为占位页面，后续实现具体页面
+        '/examMain': (context) =>
+            const Scaffold(body: Center(child: Text('考试主页面'))),
+        '/monitor': (context) =>
+            const Scaffold(body: Center(child: Text('监考页面'))),
       },
     );
   }
