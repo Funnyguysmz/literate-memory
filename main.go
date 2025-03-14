@@ -8,6 +8,7 @@ import (
 	_ "GAI_test/docs" // 这里使用下划线导入
 	"GAI_test/model"
 	"GAI_test/router"
+	"GAI_test/websocket"
 
 	"gorm.io/gorm"
 )
@@ -21,7 +22,8 @@ func main() {
 	// 初始化数据库
 	config.Connect()
 	// 自动迁移模型
-	config.DB.AutoMigrate(&model.ExamPassword{}, &model.AdminBackup{})
+	config.DB.AutoMigrate(&model.ExamPassword{}, &model.AdminBackup{}, &model.User{}, 
+		&model.ScreenStreamSession{}, &model.ScreenCapture{}, &model.Exam{}, &model.Question{})
 
 	// 初始化管理员
 	if err := initializeAdmin(); err != nil {
@@ -29,6 +31,12 @@ func main() {
 	} else {
 		log.Println("管理员初始化检查完成")
 	}
+	
+	// 初始化WebSocket管理器
+	websocket.InitWSManager()
+	// 初始化屏幕流管理器
+	websocket.InitStreamManager()
+	log.Println("WebSocket服务和流管理器初始化完成")
 
 	r := router.SetupRouter()
 	if err := r.Run(":8080"); err != nil {

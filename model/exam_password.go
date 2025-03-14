@@ -8,6 +8,7 @@ type Exam struct {
 	ExamID    string    `gorm:"unique"` // 考试标识
 	CreatedAt time.Time // 创建时间
 	Status    string    // 考试状态：preparing-准备中, ongoing-进行中, finished-已结束
+	StreamType   string    // 流类型：interval-定时截屏, realtime-实时直播
 }
 
 type ExamPassword struct {

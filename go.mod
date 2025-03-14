@@ -5,6 +5,15 @@ go 1.21.3
 require github.com/swaggo/gin-swagger v1.6.0
 
 require (
+	github.com/gen2brain/shm v0.1.0 // indirect
+	github.com/godbus/dbus/v5 v5.1.0 // indirect
+	github.com/gorilla/websocket v1.5.3 // indirect
+	github.com/jezek/xgb v1.1.1 // indirect
+	github.com/kbinani/screenshot v0.0.0-20250118074034-a3924b7bbc8c // indirect
+	github.com/lxn/win v0.0.0-20210218163916-a377121e959e // indirect
+)
+
+require (
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect

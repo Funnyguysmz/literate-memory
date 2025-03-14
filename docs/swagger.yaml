@@ -1,15 +1,39 @@
 basePath: /
 definitions:
-  controller.BindStudentRequest:
+  controller.ActiveStreamResponse:
     properties:
       examid:
         example: EXAM001
         type: string
-      stuid:
+      interval:
+        example: 5
+        type: integer
+      sessionid:
+        example: abcdef1234567890
+        type: string
+      starttime:
+        example: "2023-01-01T12:00:00Z"
+        type: string
+      streamtype:
+        example: interval
+        type: string
+      userid:
+        example: "2021001"
+        type: string
+      username:
+        example: 张三
+        type: string
+    type: object
+  controller.BindUserRequest:
+    properties:
+      examid:
+        example: EXAM001
+        type: string
+      userid:
         example: "2021001"
         type: string
     type: object
-  controller.BindStudentResponse:
+  controller.BindUserResponse:
     properties:
       examid:
         example: EXAM001
@@ -20,14 +44,22 @@ definitions:
       password:
         example: a1b2c3d4
         type: string
-      stuid:
+      userid:
         example: "2021001"
         type: string
     type: object
   controller.CreateExamRequest:
     properties:
       examid:
+        description: 考试ID（可选，不提供则自动生成）
         example: EXAM002
+        type: string
+      streamtype:
+        description: 流类型：interval-定时截屏, realtime-实时直播
+        enum:
+        - interval
+        - realtime
+        example: interval
         type: string
     type: object
   controller.CreateExamResponse:
@@ -37,6 +69,9 @@ definitions:
         type: string
       message:
         example: 考试创建成功
+        type: string
+      streamtype:
+        example: interval
         type: string
     type: object
   controller.ErrorResponse:
@@ -77,6 +112,94 @@ definitions:
         example: a1b2c3d4
         type: string
     type: object
+  controller.InitScreenStreamRequest:
+    properties:
+      interval:
+        description: 截屏间隔秒数（仅用于interval类型）
+        example: 5
+        type: integer
+      streamtype:
+        description: 流类型：interval-定时截屏, realtime-实时直播
+        enum:
+        - interval
+        - realtime
+        example: interval
+        type: string
+    type: object
+  controller.InitScreenStreamResponse:
+    properties:
+      examid:
+        example: EXAM001
+        type: string
+      interval:
+        example: 5
+        type: integer
+      message:
+        example: 屏幕流会话初始化成功
+        type: string
+      sessionid:
+        example: abcdef1234567890
+        type: string
+      streamtype:
+        example: interval
+        type: string
+      userid:
+        example: "2021001"
+        type: string
+    type: object
+  controller.RegisterUserRequest:
+    properties:
+      name:
+        description: 用户姓名
+        example: 张三
+        type: string
+      userid:
+        description: 用户ID（学号/工号）
+        example: "2021001"
+        type: string
+    required:
+    - name
+    - userid
+    type: object
+  controller.RegisterUserResponse:
+    properties:
+      message:
+        example: 注册成功
+        type: string
+      name:
+        example: 张三
+        type: string
+      userid:
+        example: "2021001"
+        type: string
+    type: object
+  controller.StopScreenStreamRequest:
+    properties:
+      sessionid:
+        example: abcdef1234567890
+        type: string
+    required:
+    - sessionid
+    type: object
+  controller.StreamTypeInfo:
+    properties:
+      description:
+        example: 每隔几秒截取一次屏幕，适合低带宽环境
+        type: string
+      name:
+        example: 定时截屏
+        type: string
+      type:
+        example: interval
+        type: string
+    type: object
+  controller.StreamTypesResponse:
+    properties:
+      streamtypes:
+        items:
+          $ref: '#/definitions/controller.StreamTypeInfo'
+        type: array
+    type: object
   controller.SuccessResponse:
     properties:
       message:
@@ -103,6 +226,37 @@ definitions:
       old_password:
         example: admin123
         type: string
+    required:
+    - new_adminid
+    - new_examid
+    - new_password
+    - old_adminid
+    - old_examid
+    - old_password
+    type: object
+  controller.UpdateExamStreamTypeRequest:
+    properties:
+      examid:
+        example: EXAM001
+        type: string
+      streamtype:
+        enum:
+        - interval
+        - realtime
+        example: realtime
+        type: string
+    required:
+    - examid
+    - streamtype
+    type: object
+  controller.User:
+    properties:
+      name:
+        example: 张三
+        type: string
+      userid:
+        example: "2021001"
+        type: string
     type: object
   controller.ValidateExamEntryRequest:
     properties:
@@ -112,7 +266,7 @@ definitions:
       password:
         example: a1b2c3d4
         type: string
-      stuid:
+      userid:
         example: "2021001"
         type: string
     type: object
@@ -128,7 +282,13 @@ definitions:
         example: 验证成功
         type: string
       role:
+        enum:
+        - student
+        - admin
         example: student
+        type: string
+      token:
+        example: eyJhbGciOiJIUzI1NiIs...
         type: string
       userid:
         example: "2021001"
@@ -224,21 +384,21 @@ paths:
     post:
       consumes:
       - application/json
-      description: 学生到达考场后绑定考试并获取密码
+      description: 用户到达考场后绑定考试并获取密码
       parameters:
       - description: 绑定信息
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/controller.BindStudentRequest'
+          $ref: '#/definitions/controller.BindUserRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/controller.BindStudentResponse'
+            $ref: '#/definitions/controller.BindUserResponse'
         "400":
           description: Bad Request
           schema:
@@ -247,7 +407,7 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/controller.ErrorResponse'
-      summary: 学生绑定考试
+      summary: 用户绑定考试
   /exam/create:
     post:
       consumes:
@@ -276,15 +436,58 @@ paths:
           schema:
             $ref: '#/definitions/controller.ErrorResponse'
       summary: 创建新考试
+  /exam/streamtype:
+    put:
+      consumes:
+      - application/json
+      description: 管理员更新指定考试的屏幕流类型
+      parameters:
+      - description: 更新请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controller.UpdateExamStreamTypeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+      summary: 更新考试流类型
+  /exam/streamtypes:
+    get:
+      description: 获取系统当前支持的屏幕流类型
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.StreamTypesResponse'
+      summary: 获取支持的流类型
   /password:
     get:
       consumes:
       - application/json
       description: 客户端接口：获取一个未分发的考试密码
       parameters:
-      - description: 学生ID
+      - description: 用户ID
         in: query
-        name: stuid
+        name: userid
         required: true
         type: string
       produces:
@@ -299,6 +502,138 @@ paths:
           schema:
             $ref: '#/definitions/controller.ErrorResponse'
       summary: 获取考试密码
+  /screen/active:
+    get:
+      consumes:
+      - application/json
+      description: 管理员获取指定考试的所有活跃屏幕流
+      parameters:
+      - description: 考试ID
+        in: query
+        name: examid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/controller.ActiveStreamResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+      summary: 获取活跃的屏幕流
+  /screen/init:
+    post:
+      consumes:
+      - application/json
+      description: 学生端初始化屏幕流会话
+      parameters:
+      - description: 初始化请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controller.InitScreenStreamRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.InitScreenStreamResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+      summary: 初始化屏幕流
+  /screen/stop:
+    post:
+      consumes:
+      - application/json
+      description: 停止指定的屏幕流会话
+      parameters:
+      - description: 停止请求
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controller.StopScreenStreamRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+      summary: 停止屏幕流
+  /user/{userid}:
+    get:
+      consumes:
+      - application/json
+      description: 获取指定ID的用户信息
+      parameters:
+      - description: 用户ID
+        in: path
+        name: userid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.User'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+      summary: 获取用户信息
+  /user/register:
+    post:
+      consumes:
+      - application/json
+      description: 注册新用户（不关联考试，仅创建基本身份）
+      parameters:
+      - description: 注册信息
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/controller.RegisterUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controller.RegisterUserResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/controller.ErrorResponse'
+      summary: 注册新用户
   /validateExamPassword:
     post:
       consumes:

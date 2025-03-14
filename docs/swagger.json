@@ -132,14 +132,14 @@
         },
         "/exam/bind": {
             "post": {
-                "description": "学生到达考场后绑定考试并获取密码",
+                "description": "用户到达考场后绑定考试并获取密码",
                 "consumes": [
                     "application/json"
                 ],
                 "produces": [
                     "application/json"
                 ],
-                "summary": "学生绑定考试",
+                "summary": "用户绑定考试",
                 "parameters": [
                     {
                         "description": "绑定信息",
@@ -147,7 +147,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/controller.BindStudentRequest"
+                            "$ref": "#/definitions/controller.BindUserRequest"
                         }
                     }
                 ],
@@ -155,7 +155,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/controller.BindStudentResponse"
+                            "$ref": "#/definitions/controller.BindUserResponse"
                         }
                     },
                     "400": {
@@ -216,6 +216,72 @@
                 }
             }
         },
+        "/exam/streamtype": {
+            "put": {
+                "description": "管理员更新指定考试的屏幕流类型",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "更新考试流类型",
+                "parameters": [
+                    {
+                        "description": "更新请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controller.UpdateExamStreamTypeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controller.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/controller.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/controller.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/controller.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/exam/streamtypes": {
+            "get": {
+                "description": "获取系统当前支持的屏幕流类型",
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "获取支持的流类型",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controller.StreamTypesResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/password": {
             "get": {
                 "description": "客户端接口：获取一个未分发的考试密码",
@@ -229,8 +295,8 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "学生ID",
-                        "name": "stuid",
+                        "description": "用户ID",
+                        "name": "userid",
                         "in": "query",
                         "required": true
                     }
@@ -240,6 +306,208 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/controller.GetPasswordResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/controller.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/screen/active": {
+            "get": {
+                "description": "管理员获取指定考试的所有活跃屏幕流",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "获取活跃的屏幕流",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "考试ID",
+                        "name": "examid",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/controller.ActiveStreamResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/controller.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/controller.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/screen/init": {
+            "post": {
+                "description": "学生端初始化屏幕流会话",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "初始化屏幕流",
+                "parameters": [
+                    {
+                        "description": "初始化请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controller.InitScreenStreamRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controller.InitScreenStreamResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/controller.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/controller.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/screen/stop": {
+            "post": {
+                "description": "停止指定的屏幕流会话",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "停止屏幕流",
+                "parameters": [
+                    {
+                        "description": "停止请求",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controller.StopScreenStreamRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controller.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/controller.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/controller.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/register": {
+            "post": {
+                "description": "注册新用户（不关联考试，仅创建基本身份）",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "注册新用户",
+                "parameters": [
+                    {
+                        "description": "注册信息",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/controller.RegisterUserRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controller.RegisterUserResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/controller.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/{userid}": {
+            "get": {
+                "description": "获取指定ID的用户信息",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "获取用户信息",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "用户ID",
+                        "name": "userid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/controller.User"
                         }
                     },
                     "404": {
@@ -302,20 +570,53 @@
         }
     },
     "definitions": {
-        "controller.BindStudentRequest": {
+        "controller.ActiveStreamResponse": {
             "type": "object",
             "properties": {
                 "examid": {
                     "type": "string",
                     "example": "EXAM001"
                 },
-                "stuid": {
+                "interval": {
+                    "type": "integer",
+                    "example": 5
+                },
+                "sessionid": {
+                    "type": "string",
+                    "example": "abcdef1234567890"
+                },
+                "starttime": {
+                    "type": "string",
+                    "example": "2023-01-01T12:00:00Z"
+                },
+                "streamtype": {
+                    "type": "string",
+                    "example": "interval"
+                },
+                "userid": {
+                    "type": "string",
+                    "example": "2021001"
+                },
+                "username": {
+                    "type": "string",
+                    "example": "张三"
+                }
+            }
+        },
+        "controller.BindUserRequest": {
+            "type": "object",
+            "properties": {
+                "examid": {
+                    "type": "string",
+                    "example": "EXAM001"
+                },
+                "userid": {
                     "type": "string",
                     "example": "2021001"
                 }
             }
         },
-        "controller.BindStudentResponse": {
+        "controller.BindUserResponse": {
             "type": "object",
             "properties": {
                 "examid": {
@@ -330,7 +631,7 @@
                     "type": "string",
                     "example": "a1b2c3d4"
                 },
-                "stuid": {
+                "userid": {
                     "type": "string",
                     "example": "2021001"
                 }
@@ -340,8 +641,18 @@
             "type": "object",
             "properties": {
                 "examid": {
+                    "description": "考试ID（可选，不提供则自动生成）",
                     "type": "string",
                     "example": "EXAM002"
+                },
+                "streamtype": {
+                    "description": "流类型：interval-定时截屏, realtime-实时直播",
+                    "type": "string",
+                    "enum": [
+                        "interval",
+                        "realtime"
+                    ],
+                    "example": "interval"
                 }
             }
         },
@@ -355,6 +666,10 @@
                 "message": {
                     "type": "string",
                     "example": "考试创建成功"
+                },
+                "streamtype": {
+                    "type": "string",
+                    "example": "interval"
                 }
             }
         },
@@ -413,6 +728,130 @@
                 }
             }
         },
+        "controller.InitScreenStreamRequest": {
+            "type": "object",
+            "properties": {
+                "interval": {
+                    "description": "截屏间隔秒数（仅用于interval类型）",
+                    "type": "integer",
+                    "example": 5
+                },
+                "streamtype": {
+                    "description": "流类型：interval-定时截屏, realtime-实时直播",
+                    "type": "string",
+                    "enum": [
+                        "interval",
+                        "realtime"
+                    ],
+                    "example": "interval"
+                }
+            }
+        },
+        "controller.InitScreenStreamResponse": {
+            "type": "object",
+            "properties": {
+                "examid": {
+                    "type": "string",
+                    "example": "EXAM001"
+                },
+                "interval": {
+                    "type": "integer",
+                    "example": 5
+                },
+                "message": {
+                    "type": "string",
+                    "example": "屏幕流会话初始化成功"
+                },
+                "sessionid": {
+                    "type": "string",
+                    "example": "abcdef1234567890"
+                },
+                "streamtype": {
+                    "type": "string",
+                    "example": "interval"
+                },
+                "userid": {
+                    "type": "string",
+                    "example": "2021001"
+                }
+            }
+        },
+        "controller.RegisterUserRequest": {
+            "type": "object",
+            "required": [
+                "name",
+                "userid"
+            ],
+            "properties": {
+                "name": {
+                    "description": "用户姓名",
+                    "type": "string",
+                    "example": "张三"
+                },
+                "userid": {
+                    "description": "用户ID（学号/工号）",
+                    "type": "string",
+                    "example": "2021001"
+                }
+            }
+        },
+        "controller.RegisterUserResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "注册成功"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "张三"
+                },
+                "userid": {
+                    "type": "string",
+                    "example": "2021001"
+                }
+            }
+        },
+        "controller.StopScreenStreamRequest": {
+            "type": "object",
+            "required": [
+                "sessionid"
+            ],
+            "properties": {
+                "sessionid": {
+                    "type": "string",
+                    "example": "abcdef1234567890"
+                }
+            }
+        },
+        "controller.StreamTypeInfo": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "example": "每隔几秒截取一次屏幕，适合低带宽环境"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "定时截屏"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "interval"
+                }
+            }
+        },
+        "controller.StreamTypesResponse": {
+            "type": "object",
+            "properties": {
+                "streamtypes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/controller.StreamTypeInfo"
+                    }
+                }
+            }
+        },
         "controller.SuccessResponse": {
             "type": "object",
             "properties": {
@@ -424,6 +863,14 @@
         },
         "controller.UpdateAdminRequest": {
             "type": "object",
+            "required": [
+                "new_adminid",
+                "new_examid",
+                "new_password",
+                "old_adminid",
+                "old_examid",
+                "old_password"
+            ],
             "properties": {
                 "new_adminid": {
                     "type": "string",
@@ -451,6 +898,40 @@
                 }
             }
         },
+        "controller.UpdateExamStreamTypeRequest": {
+            "type": "object",
+            "required": [
+                "examid",
+                "streamtype"
+            ],
+            "properties": {
+                "examid": {
+                    "type": "string",
+                    "example": "EXAM001"
+                },
+                "streamtype": {
+                    "type": "string",
+                    "enum": [
+                        "interval",
+                        "realtime"
+                    ],
+                    "example": "realtime"
+                }
+            }
+        },
+        "controller.User": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "example": "张三"
+                },
+                "userid": {
+                    "type": "string",
+                    "example": "2021001"
+                }
+            }
+        },
         "controller.ValidateExamEntryRequest": {
             "type": "object",
             "properties": {
@@ -462,7 +943,7 @@
                     "type": "string",
                     "example": "a1b2c3d4"
                 },
-                "stuid": {
+                "userid": {
                     "type": "string",
                     "example": "2021001"
                 }
@@ -485,7 +966,15 @@
                 },
                 "role": {
                     "type": "string",
+                    "enum": [
+                        "student",
+                        "admin"
+                    ],
                     "example": "student"
+                },
+                "token": {
+                    "type": "string",
+                    "example": "eyJhbGciOiJIUzI1NiIs..."
                 },
                 "userid": {
                     "type": "string",

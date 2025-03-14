@@ -69,7 +69,7 @@ func GeneratePasswords(c *gin.Context) {
 // @Description 客户端接口：获取一个未分发的考试密码
 // @Accept json
 // @Produce json
-// @Param stuid query string true "学生ID"
+// @Param userid query string true "用户ID"
 // @Success 200 {object} GetPasswordResponse
 // @Failure 404 {object} ErrorResponse
 // @Router /password [get]
@@ -81,7 +81,7 @@ func GetPassword(c *gin.Context) {
 	}
 	// 模拟领取时绑定考生信息，实际业务中考生ID应由客户端传入
 	pwd.Distributed = true
-	pwd.StudentID = c.Query("stuid") // 示例：从查询参数中获取考生学号
+	pwd.StudentID = c.Query("userid") // 改为userid
 	config.DB.Save(&pwd)
 	c.JSON(http.StatusOK, gin.H{"password": pwd.Password})
 }
@@ -139,17 +139,17 @@ func RaiseHand(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "token验证失败"})
 		return
 	}
-	// 要求token中的userid与请求body中的stuid一致
+	// 要求token中的userid与请求body中的userid一致
 	var req struct {
 		ExamID    string `json:"examid"`
-		StudentID string `json:"stuid"`
+		UserID    string `json:"userid"`  // 改为userid
 		Reason    string `json:"reason"`
 	}
-	if err := c.ShouldBindJSON(&req); err != nil || req.ExamID == "" || req.StudentID == "" {
+	if err := c.ShouldBindJSON(&req); err != nil || req.ExamID == "" || req.UserID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "请求参数不完整"})
 		return
 	}
-	if claims["userid"] != req.StudentID {
+	if claims["userid"] != req.UserID {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "token与用户不匹配"})
 		return
 	}
@@ -301,46 +301,91 @@ func CreateExam(c *gin.Context) {
 	}
 
 	var req struct {
-		ExamID string `json:"examid"`
+		ExamID     string `json:"examid"`
+		StreamType string `json:"streamtype"` // 流类型：interval-定时截屏, realtime-实时直播
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的考试ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的请求参数"})
 		return
 	}
 
+	// 设置默认流类型
+	if req.StreamType == "" {
+		req.StreamType = "interval" // 默认使用定时截屏
+	}
+
+	// 验证流类型是否有效
+	if req.StreamType != "interval" && req.StreamType != "realtime" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的流类型"})
+		return
+	}
+
+	// 如果没有提供考试ID，则自动生成一个
+	if req.ExamID == "" {
+		// 生成一个随机的考试ID，格式为 EXAM + 6位随机字符
+		req.ExamID = "EXAM" + utils.GenerateRandomString(6)
+		
+		// 确保生成的ID不重复
+		var count int64
+		for {
+			config.DB.Model(&model.Exam{}).Where("exam_id = ?", req.ExamID).Count(&count)
+			if count == 0 {
+				break
+			}
+			req.ExamID = "EXAM" + utils.GenerateRandomString(6)
+		}
+	} else {
+		// 检查考试ID是否已存在
+		var count int64
+		config.DB.Model(&model.Exam{}).Where("exam_id = ?", req.ExamID).Count(&count)
+		if count > 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "考试ID已存在"})
+			return
+		}
+	}
+
 	exam := model.Exam{
-		ExamID:  req.ExamID,
-		Status:  "preparing",
+		ExamID:     req.ExamID,
+		Status:     "preparing",
+		StreamType: req.StreamType,
 	}
 
 	if err := config.DB.Create(&exam).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "考试ID已存在"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "创建考试失败"})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "考试创建成功",
-		"examid":  exam.ExamID,
+		"message":    "考试创建成功",
+		"examid":     exam.ExamID,
+		"streamtype": exam.StreamType,
 	})
 }
 
-// BindStudent 学生绑定考试
-// @Summary 学生绑定考试
-// @Description 学生到达考场后绑定考试并获取密码
+// BindUser 用户绑定考试 (重命名原BindStudent)
+// @Summary 用户绑定考试
+// @Description 用户到达考场后绑定考试并获取密码
 // @Accept json
 // @Produce json
-// @Param request body BindStudentRequest true "绑定信息"
-// @Success 200 {object} BindStudentResponse
+// @Param request body BindUserRequest true "绑定信息"
+// @Success 200 {object} BindUserResponse
 // @Failure 400 {object} ErrorResponse
 // @Failure 404 {object} ErrorResponse
 // @Router /exam/bind [post]
 func BindStudent(c *gin.Context) {
 	var req struct {
-		ExamID    string `json:"examid"`
-		StudentID string `json:"stuid"`
+		ExamID string `json:"examid"`
+		UserID string `json:"userid"`  // 改为userid
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "请求参数不完整"})
+		return
+	}
+
+	// 检查用户是否已注册
+	var user model.User
+	if err := config.DB.Where("user_id = ?", req.UserID).First(&user).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "用户未注册，请先注册"})
 		return
 	}
 
@@ -351,23 +396,23 @@ func BindStudent(c *gin.Context) {
 		return
 	}
 
-	// 检查学生是否已绑定
+	// 检查用户是否已绑定此考试
 	var existingPwd model.ExamPassword
 	if err := config.DB.Where("exam_id = ? AND student_id = ?", 
-		req.ExamID, req.StudentID).First(&existingPwd).Error; err == nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "该学生已绑定考试"})
+		req.ExamID, req.UserID).First(&existingPwd).Error; err == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "该用户已绑定考试"})
 		return
 	}
 
 	// 生成密码和token
 	password := utils.GenerateRandomString(8)
-	token := generateToken(req.StudentID, req.ExamID, "student")
+	token := generateToken(req.UserID, req.ExamID, "student")
 
 	// 创建密码记录
 	pwd := model.ExamPassword{
 		Password:   password,
 		ExamID:    req.ExamID,
-		StudentID: req.StudentID,
+		StudentID: req.UserID,  // 使用StudentID字段存储userid
 		Role:      "student",
 		ValidFrom: time.Now(),
 		ValidUntil: time.Now().Add(24 * time.Hour),
@@ -382,7 +427,8 @@ func BindStudent(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message":  "绑定成功",
 		"examid":   req.ExamID,
-		"stuid":    req.StudentID,
+		"userid":   req.UserID,
+		"username": user.Name,  // 添加用户姓名
 		"password": password,
 	})
 }
@@ -400,18 +446,27 @@ func BindStudent(c *gin.Context) {
 // @Router /validateExamPassword [post]
 func ValidateExamEntryWithToken(c *gin.Context) {
 	var req struct {
-		ExamID    string `json:"examid"`
-		StudentID string `json:"stuid"`
-		Password  string `json:"password"`
+		ExamID   string `json:"examid"`
+		UserID   string `json:"userid"`  // 改为userid
+		Password string `json:"password"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "请求参数不完整"})
 		return
 	}
 
+	// 首先检查用户是否存在
+	var count int64
+	config.DB.Model(&model.ExamPassword{}).Where("exam_id = ? AND student_id = ?", 
+		req.ExamID, req.UserID).Count(&count)
+	if count == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "用户不存在，请先注册"})
+		return
+	}
+
 	var pwd model.ExamPassword
 	if err := config.DB.Where("exam_id = ? AND student_id = ? AND password = ?", 
-		req.ExamID, req.StudentID, req.Password).First(&pwd).Error; err != nil {
+		req.ExamID, req.UserID, req.Password).First(&pwd).Error; err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "验证失败"})
 		return
 	}
@@ -428,7 +483,7 @@ func ValidateExamEntryWithToken(c *gin.Context) {
 		"token":   pwd.Token,
 		"role":    pwd.Role,
 		"examid":  pwd.ExamID,
-		"userid":  pwd.StudentID,
+		"userid":  pwd.StudentID,  // 这里响应中使用userid
 	})
 }
 
@@ -516,23 +571,41 @@ type GetPasswordResponse struct {
 }
 
 type ValidateExamEntryRequest struct {
-	ExamID    string `json:"examid" example:"EXAM001"`
-	StudentID string `json:"stuid" example:"2021001"`
-	Password  string `json:"password" example:"a1b2c3d4"`
+	ExamID   string `json:"examid" example:"EXAM001"`
+	UserID   string `json:"userid" example:"2021001"`
+	Password string `json:"password" example:"a1b2c3d4"`
 }
 
+// ValidateExamEntryResponse 登录验证响应
 type ValidateExamEntryResponse struct {
 	Message   string `json:"message" example:"验证成功"`
-	Role      string `json:"role" example:"student"`
+	Token     string `json:"token" example:"eyJhbGciOiJIUzI1NiIs..."`
+	Role      string `json:"role" example:"student" enums:"student,admin"`
 	IsDefault bool   `json:"is_default" example:"false"`
 	ExamID    string `json:"examid" example:"EXAM001"`
 	UserID    string `json:"userid" example:"2021001"`
 }
 
+// TokenInvalidateRequest token失效请求
+type TokenInvalidateRequest struct {
+	Token string `json:"token" example:"eyJhbGciOiJIUzI1NiIs..." binding:"required"`
+}
+
+// TokenInvalidateResponse token失效响应
+type TokenInvalidateResponse struct {
+	Message string `json:"message" example:"token已失效"`
+}
+
+// RaiseHandRequest 举手请求
 type RaiseHandRequest struct {
-	ExamID    string `json:"examid" example:"EXAM001"`
-	StudentID string `json:"stuid" example:"2021001"`
-	Reason    string `json:"reason" example:"无法获取密码"`
+	ExamID  string `json:"examid" example:"EXAM001" binding:"required"`
+	UserID  string `json:"userid" example:"2021001" binding:"required"` // 改为userid
+	Reason  string `json:"reason" example:"无法获取密码" binding:"required"`
+}
+
+// RaiseHandResponse 举手响应
+type RaiseHandResponse struct {
+	Message string `json:"message" example:"举手请求已提交"`
 }
 
 type SuccessResponse struct {
@@ -543,36 +616,138 @@ type ErrorResponse struct {
 	Error string `json:"error" example:"请求参数错误"`
 }
 
+// UpdateAdminRequest 更新管理员信息请求
 type UpdateAdminRequest struct {
-	OldAdminID  string `json:"old_adminid" example:"admin"`
-	OldPassword string `json:"old_password" example:"admin123"`
-	OldExamID   string `json:"old_examid" example:"EXAM001"`
-	NewAdminID  string `json:"new_adminid" example:"customAdmin"`
-	NewPassword string `json:"new_password" example:"customPassword"`
-	NewExamID   string `json:"new_examid" example:"CUSTOM001"`
+	OldAdminID  string `json:"old_adminid" example:"admin" binding:"required"`
+	OldPassword string `json:"old_password" example:"admin123" binding:"required"`
+	OldExamID   string `json:"old_examid" example:"EXAM001" binding:"required"`
+	NewAdminID  string `json:"new_adminid" example:"customAdmin" binding:"required"`
+	NewPassword string `json:"new_password" example:"customPassword" binding:"required"`
+	NewExamID   string `json:"new_examid" example:"CUSTOM001" binding:"required"`
 }
 
 // CreateExamRequest 创建考试请求
 type CreateExamRequest struct {
-	ExamID string `json:"examid" example:"EXAM002"`
+	ExamID     string `json:"examid" example:"EXAM002"` // 考试ID（可选，不提供则自动生成）
+	StreamType string `json:"streamtype" example:"interval" enums:"interval,realtime"` // 流类型：interval-定时截屏, realtime-实时直播
 }
 
 // CreateExamResponse 创建考试响应
 type CreateExamResponse struct {
-	Message string `json:"message" example:"考试创建成功"`
-	ExamID  string `json:"examid" example:"EXAM002"`
+	Message    string `json:"message" example:"考试创建成功"`
+	ExamID     string `json:"examid" example:"EXAM002"`
+	StreamType string `json:"streamtype" example:"interval"`
 }
 
-// BindStudentRequest 学生绑定考试请求
-type BindStudentRequest struct {
-	ExamID    string `json:"examid" example:"EXAM001"`
-	StudentID string `json:"stuid" example:"2021001"`
+// BindUserRequest 用户绑定考试请求 (原BindStudentRequest)
+type BindUserRequest struct {
+	ExamID string `json:"examid" example:"EXAM001"`
+	UserID string `json:"userid" example:"2021001"`
 }
 
-// BindStudentResponse 学生绑定考试响应
-type BindStudentResponse struct {
+// BindUserResponse 用户绑定考试响应 (原BindStudentResponse)
+type BindUserResponse struct {
 	Message  string `json:"message" example:"绑定成功"`
 	ExamID   string `json:"examid" example:"EXAM001"`
-	Stuid    string `json:"stuid" example:"2021001"`
+	UserID   string `json:"userid" example:"2021001"`
 	Password string `json:"password" example:"a1b2c3d4"`
+}
+
+// UpdateExamStreamType 更新考试流类型
+// @Summary 更新考试流类型
+// @Description 管理员更新指定考试的屏幕流类型
+// @Accept json
+// @Produce json
+// @Param request body UpdateExamStreamTypeRequest true "更新请求"
+// @Success 200 {object} SuccessResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 401 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Router /exam/streamtype [put]
+func UpdateExamStreamType(c *gin.Context) {
+	// 验证管理员身份
+	token := c.GetHeader("Authorization")
+	if !validateAdminToken(token) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "无权限"})
+		return
+	}
+
+	var req struct {
+		ExamID     string `json:"examid" binding:"required"`
+		StreamType string `json:"streamtype" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "请求参数不完整"})
+		return
+	}
+
+	// 验证流类型是否有效
+	if req.StreamType != "interval" && req.StreamType != "realtime" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的流类型"})
+		return
+	}
+
+	// 查询考试是否存在
+	var exam model.Exam
+	if err := config.DB.Where("exam_id = ?", req.ExamID).First(&exam).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "考试不存在"})
+		return
+	}
+
+	// 更新流类型
+	exam.StreamType = req.StreamType
+	if err := config.DB.Save(&exam).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "更新失败"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "考试流类型更新成功",
+		"examid": req.ExamID,
+		"streamtype": req.StreamType,
+	})
+}
+
+// GetSupportedStreamTypes 获取支持的流类型
+// @Summary 获取支持的流类型
+// @Description 获取系统当前支持的屏幕流类型
+// @Produce json
+// @Success 200 {object} StreamTypesResponse
+// @Router /exam/streamtypes [get]
+func GetSupportedStreamTypes(c *gin.Context) {
+	// 定义当前支持的流类型
+	streamTypes := []gin.H{
+		{
+			"type": "interval",
+			"name": "定时截屏",
+			"description": "每隔几秒截取一次屏幕，适合低带宽环境",
+		},
+		{
+			"type": "realtime",
+			"name": "实时直播",
+			"description": "高频率截屏（约10帧/秒），提供接近实时的体验",
+		},
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"streamtypes": streamTypes,
+	})
+}
+
+// UpdateExamStreamTypeRequest 更新考试流类型请求
+type UpdateExamStreamTypeRequest struct {
+	ExamID     string `json:"examid" example:"EXAM001" binding:"required"`
+	StreamType string `json:"streamtype" example:"realtime" binding:"required" enums:"interval,realtime"`
+}
+
+// StreamTypesResponse 流类型响应
+type StreamTypesResponse struct {
+	StreamTypes []StreamTypeInfo `json:"streamtypes"`
+}
+
+// StreamTypeInfo 流类型信息
+type StreamTypeInfo struct {
+	Type        string `json:"type" example:"interval"`
+	Name        string `json:"name" example:"定时截屏"`
+	Description string `json:"description" example:"每隔几秒截取一次屏幕，适合低带宽环境"`
 }
